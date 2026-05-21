@@ -1,0 +1,268 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Language {
+  ENGLISH
+  TAMIL
+  KANNADA
+  HINDI
+  TELUGU
+}
+
+enum VisitStatus {
+  pending
+  confirmed
+  calling
+  cancelled
+  completed
+}
+
+model User {
+  id                Int              @id @default(autoincrement())
+  mobile            String           @unique
+  createdAt         DateTime         @default(now())
+  email             String?
+  isProfileComplete Boolean          @default(false)
+  name              String?
+  latitude          Float?
+  longitude         Float?
+  city              String?
+  area              String?
+  locality          String?
+  preferredLanguage Language         @default(ENGLISH)
+
+  Apartment         Apartment[]
+  ChatMessage       ChatMessage[]
+  likes             Like[]
+  receivedMessages  Message[]        @relation("Receiver")
+  sentMessages      Message[]        @relation("Sender")
+  properties        PGDetails[]
+  propertyViews     PropertyView[]
+  RoommateProfile   RoommateProfile?
+  subscriptions     Subscription[]
+  UserPreference    UserPreference[]
+  visits            Visit[]
+}
+
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Subscription {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  planType     String
+  planDuration String
+  amount       Int
+  paymentId    String
+  propertyType String
+  startDate    DateTime
+  expiryDate   DateTime
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Otp {
+  id        Int      @id @default(autoincrement())
+  mobile    String
+  otp       String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model UserPreference {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  city            String?
+  locality        String?
+  search          String?
+  pgFor           String?
+  sharingTypes    Json?
+  preferredTenant String?
+  availability    String?
+  parking         String?
+  foodIncluded    Boolean?
+  rentMin         Int?
+  rentMax         Int?
+  amenities       Json?
+  nearby          Json?
+  restrictions    Json?
+  premiumSort     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+}
+
+model Like {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  propertyId Int
+  createdAt  DateTime @default(now())
+
+  property PGDetails @relation(fields: [propertyId], references: [id])
+  user     User      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, propertyId])
+}
+
+model Visit {
+  id            Int         @id @default(autoincrement())
+  date          String?
+  time          String?
+  visitDateTime DateTime?
+  status        VisitStatus @default(pending)
+  language      Language    @default(ENGLISH)
+  isCalled      Boolean     @default(false)
+  userId        Int
+  propertyId    Int
+  createdAt     DateTime    @default(now())
+
+  property PGDetails @relation(fields: [propertyId], references: [id])
+  user     User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([propertyId])
+  @@index([status])
+}
+
+model PGDetails {
+  id                  Int        @id @default(autoincrement())
+  userId              Int
+  city                String
+  locality            String
+  street              String?
+  landmark            String?
+  latitude            Float?
+  longitude           Float?
+  propertyName        String?
+  propertyType        String
+  language            Language   @default(ENGLISH)
+  roomType            Json?
+  foodIncluded        Boolean?
+  foodType            Json?
+  pgAmenities         Json?
+  parking             String?
+  availableFrom       DateTime?
+  noticePeriod        Int?
+  gateClosingTime     DateTime?
+  images              String[]   @default([])
+  video               String?
+  contactName         String?
+  mobileNo            String?
+  whatsapp            Boolean?
+  whatsappupdates     Boolean?
+  preferredTenant     Json?
+  preferredGuests     Json?
+  restrictions        Json?
+  propertyDescription String?
+  currentStep         Int        @default(1)
+  isDraft             Boolean    @default(true)
+  isDeleted           Boolean    @default(false)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  likes         Like[]
+  messages      Message[]      @relation("PropertyMessages")
+  propertyViews PropertyView[]
+  visits        Visit[]
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("Property")
+}
+
+model Apartment {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  city          String
+  locality      String
+  street        String?
+  landmark      String?
+  latitude      Float?
+  longitude     Float?
+  propertyType2 String?
+  buildingType  String?
+  bhkType       String?
+  floor         Int?
+  totalFloor    Int?
+  builtUpArea   Int?
+  propertyAge   String?
+  facing        String?
+  furnishing    Json?
+  otherFeatures Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  ApartmentType String?
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model PropertyView {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  propertyId Int
+  createdAt  DateTime @default(now())
+
+  property PGDetails @relation(fields: [propertyId], references: [id])
+  user     User      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, propertyId])
+}
+
+model Message {
+  id         Int      @id @default(autoincrement())
+  senderId   Int
+  receiverId Int
+  propertyId Int
+  message    String
+  createdAt  DateTime @default(now())
+
+  property PGDetails @relation("PropertyMessages", fields: [propertyId], references: [id])
+
+  receiver User @relation("Receiver", fields: [receiverId], references: [id])
+
+  sender User @relation("Sender", fields: [senderId], references: [id])
+
+  @@index([propertyId])
+  @@index([senderId])
+  @@index([receiverId])
+}
+
+model RoommateProfile {
+  id              Int       @id @default(autoincrement())
+  userId          Int?      @unique
+  sleep_time      String?
+  cleanliness     Int?
+  food_type       String?
+  likes_movies    Boolean?
+  likes_travel    Boolean?
+  likes_foodie    Boolean?
+  likes_outing    Boolean?
+  likes_night_out Boolean?
+  likes_gaming    Boolean?
+  likes_gym       Boolean?
+  monthly_budget  Int?
+  createdAt       DateTime? @default(now()) @db.Timestamp(6)
+
+  User User? @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
